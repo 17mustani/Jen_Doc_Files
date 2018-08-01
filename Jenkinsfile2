@@ -1,0 +1,63 @@
+pipeline {
+
+  agent any
+
+  stages {
+
+    stage ('Compile Stage'){
+      steps {
+        withMaven (maven : 'maven-3-3-9') {
+	  sh 'mvn clean compile'
+        }
+      }
+    }
+
+    stage ('Metrics Stage'){
+      steps {
+        withMaven (maven : 'maven-3-3-9') {
+          sh 'mvn -P metrics pmd:pmd'
+        }
+      }
+    }
+
+    stage ('Testing Stage'){
+      steps {
+        withMaven (maven : 'maven-3-3-9') {
+          sh 'mvn test'
+        }
+      }
+    }
+
+    stage ('Coberturs Reports Stage'){
+      steps {
+        withMaven (maven : 'maven-3-3-9') {
+          sh 'mvn cobertura:cobertura -Dcobertura.report.format=xml'
+        }
+      post {
+        always {
+          jUnit 'target/surefire-reports/*.xml'
+          step ([$class : 'cobertura.publisher', autoUpdteHealth: false, autoUpdateStability: false, coberturaReportFile:'**/coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+        }   
+      }
+      }
+    }
+
+    stage ('Package Stage'){
+      steps {
+        withMaven (maven : 'maven-3-3-9') {
+          sh 'mvn package'
+        }
+      }
+    }
+
+    stage ('Deploy to Tomcat'){
+      steps {
+        sshagent(['hhjjiugd254465787hggdfhjhhuijkjh']){
+	  sh 'scp target/addressbook.war guest@192.168.33.10:/var/lib/tomcat/webapps/'
+        }
+      }
+    }
+
+}
+
+}
